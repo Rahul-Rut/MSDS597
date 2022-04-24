@@ -8,6 +8,7 @@ library(tibble)
 library(lubridate)
 library(purrr)
 library(tidyverse)
+library(shiny)
 
 url_test <- "https://api.spotify.com/v1/artists/3pc0bOVB5whxmD50W79wwO" 
 test = url_test %>% fromJSON()%>%.[[1]]%>%as_tibble()  #gives an error so don't bother running
@@ -106,18 +107,20 @@ append(weeks, date_list)
 list(date0, weeks)
 
 
+as.list(weeks)
 
 
-
-getMonthlyWeeks <- function(week1_date) {  #calculates 4 weeks prior dates
+getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates
   todate = today()
   offset = (interval(date1, todate)/ days (1)) %% 7
   if (offset!= 0){
     todate = todate - offset
   }
+  
+  
   dates = todate - (7 * (seq(0,4)))
   weeks = paste0(dates[-1] ,"--",dates[-length(dates)])
-  return(weeks)
+  return(as.list(weeks))
 }
 
 getToken <- function(){
@@ -206,7 +209,7 @@ concat.url<- function(x){
 #region, regional/[us,ar], global
 #dates : daily: today(), weekly : offset, (maybe change month function to weekly, and run it 4 times)
 week_list = fnCurrentMonth(date1)
-finalurl = lapply(fnCurrentMonth(date1), concat.url)
+finalurl = lapply(getWeeks(date1), concat.url)
 finalurl[[1]]
 
 url <- "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
@@ -242,14 +245,25 @@ dim(spotify)
 token
 str(table$Artist)
 
+getURLsuffix <- function(){
+  
+}
+
 genURL <- function(){
   
 }
 
-getSpotifyData <- function(url){
-  url <- "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
+getSpotifyCharts <- function(url, month_bin = 0){
+
   #Extract the table
-  table <- url[[1]] %>% read_html() %>% html_table(fill = TRUE) %>% .[[1]] 
+  table <- url %>% read_html() %>% html_table(fill = TRUE) %>% .[[1]] 
+  
+  if(month_bin == 1){
+    
+    table <-table[1:50,]
+  }
+  
+  
   names(table)[1] <- "a"
   names(table)[2] <- "Number"  #name the unnamed columns so we can convert to tibble
   names(table)[3] <- "b"
@@ -259,6 +273,12 @@ getSpotifyData <- function(url){
   artists <- url %>% read_html() %>% html_nodes("span") %>% html_text2() 
   artists[2] #This is where the artists start being listed
   artists_list <- artists[2:201] %>% as_tibble() %>% rename(Artist=value) #create a list of the artists for the given chart
+  
+  
+  if(month_bin == 1){
+    artists_list <- artists_list[1:50,]
+  }
+  
   
   #Now we can clean the list by removing the "by" in every entry, leaving only the artist
   artists_list$Artist <- str_replace_all(artists_list$Artist,"by ","")
@@ -274,10 +294,30 @@ getSpotifyData <- function(url){
   
   
 }
+url = "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
+ScrapedData <- getSpotifyCharts(url, month_bin = 1)
 
-ScrapedData <- getSpotifyData("https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15")
 
-table
+weeks = getWeeks(date1)
+
+lapply(weeks, getSpotifyCharts())
+
+ 
+weeks = getWeeks(date1)
+month_list = map2( map(weeks, concat.url),1, getSpotifyCharts) 
+month_list%>%
+  bind_rows(.)%>%
+  group_by(Track, Artist )%>%
+  summarize(Streams = sum(Streams))
+
+for (i in weeks){
+  url = "https://spotifycharts.com/regional/global/weekly/"
+  i = paste0(url,i)
+  getSpotifyCharts(i, month_bin = 1)
+}
+
+
+#The following two functions are meant for extracting Genre
 
 getGenreTibble <- function(artistS){ 
   url_encoded = URLencode(artistS)
@@ -304,7 +344,7 @@ test = table%>%
 
 #Generates Top Artist in the Specific Period
 table%>%
-  separate_rows(Artist, sep = ",", convert = TRUE)%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
   group_by(Artist)%>%
   summarize(Total_Stream = sum(Streams))%>%
   arrange(desc(Total_Stream))
@@ -322,8 +362,13 @@ test%>%
 
 
 
+#Workflow 
+table[1:50,]
 
 
+
+
+#JUNK CODE
 test2 = table%>%
   separate_rows(Artist, sep = ",", convert = TRUE)%>%
   group_by(Artist)%>%
