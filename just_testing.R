@@ -109,19 +109,23 @@ list(date0, weeks)
 
 as.list(weeks)
 
+seq(0,1)
 
-getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates
+
+getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates; n is number of weeks
   todate = today()
-  offset = (interval(date1, todate)/ days (1)) %% 7
+  offset = (interval(week1_date, todate)/ days (1)) %% 7
   if (offset!= 0){
     todate = todate - offset
   }
   
   
-  dates = todate - (7 * (seq(0,4)))
+  dates = todate - (7 * (seq(0,n)))
   weeks = paste0(dates[-1] ,"--",dates[-length(dates)])
   return(as.list(weeks))
 }
+
+getWeeks(date1,53)
 
 getToken <- function(){
   test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
@@ -199,6 +203,7 @@ result
 #TO BE REPLACED
 #------------------------------------------------------------------------------#
 url <- "https://spotifycharts.com/regional/us/weekly/"
+
 concat.url<- function(x){
   full_url <- paste0(url, x)
   full_url
@@ -328,9 +333,11 @@ getGenreTibble <- function(artistS){
 
 getGenreArtist <- function(artist){
   
-  search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
+ tryCatch(  {search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
   result = content(search)
-  result = result$artists$items[[1]]$genres
+  message(artist)
+  message(result$artists$items[[1]]$genres)
+  result = result$artists$items[[1]]$genres}, error = function(e){})
   #genre_list = append(genre_list, result$artists$items[[1]]$genres)
   
 }
@@ -360,10 +367,154 @@ test%>%
   geom_col()
   
 
+#lets make a separate dataframe for yearly scraped data @_@
+
+weeks = getWeeks(date1, n = 48)  #for n = 48 weeks assuming 4 weeks per month
+#url is set to global weekly
+month_list = map2( map(weeks, concat.url),1, getSpotifyCharts) #scraping data for a year (top 50 per week)
+
+month_index = (rep( seq(12,1,-1) , each = 200)) #calculate month backwards
+
+Scraped = month_list%>%
+  bind_rows(.)%>%
+  mutate(Month = month_index) #add month index
+
+#See how artists did over the year  
+
+Scraped = Scraped%>%
+  mutate(Artist = replace(Artist, Artist == "BobHelms", "Bobby Helms"))
+
+#top10 artists
+ten_artists = Scraped%>%
+  separate_rows(Artist, sep = ", ", convert = TRUE)%>% #splits Artists
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))%>%
+  select(Artist)%>%
+  head(10)
+
+pull(ten_artists)
+
+#top10 artists performance over the year each month
+Scraped%>%
+  separate_rows(Artist, sep = ", ", convert = TRUE)%>% 
+  group_by(Artist, Month)%>%
+  summarize(Total_Streams = sum(Streams))%>%
+  filter(Artist %in% pull(ten_artists))%>%
+  ggplot(aes(Month, Total_Streams, color = Artist))+
+  geom_line()
+  
+#investigating the peak
+Scraped%>%
+  separate_rows(Artist, sep = ", ", convert = TRUE)%>% 
+  filter(Month == 1)%>% 
+  group_by(Artist)%>%
+  tally()%>%
+  arrange(desc(n))  #Olivia Rodrigo had several hits that month!!
+
+
+#getting top genre in the past year
+
+#getting rid of one random blank data
+Scraped = Scraped%>%
+  mutate_all(na_if,"")
+
+Artist_list = Scraped$Artist%>%
+  str_split(", ")%>%
+  unlist()%>%
+  unique()
+
+token= getToken()
+genres_list = map(URLencode(Artist_list), getGenreArtist)
+
+Artist_Genre = tibble(Artist_list, genres_list )
+
+res = Artist_Genre%>%filter(Artist_list == "Drake")
+res$genres_list
+
+
+matchGenre <- function(artist){
+  result = Artist_Genre%>%filter(Artist_list == artist)
+  result$genres_list
+}
+
+tpp = Scraped%>%
+  separate_rows(Artist, sep = ", ", convert = TRUE)%>%
+  group_by(Artist)%>%
+  mutate(Genre = map(Artist,matchGenre))
+
+
+
+tppp = tpp%>%
+  ungroup()%>%
+  group_by(Track, Month)%>%
+  mutate(Genre = toString(unique(unlist(Genre))))%>%
+  separate_rows(Genre, sep = ", ")
+
+tr = tppp%>%
+  ungroup()%>%
+  group_by(Genre)%>%
+  summarize(Total_Streams = sum(Streams))%>%  #tally() here would give appearances of these genres per week
+  arrange(desc(Total_Streams))%>%
+  head(10)
+tr$Genre
+
+
+dfd = tppp%>%
+  filter(Track == "Enemy (with JID) - from the series Arcane League of Legends")%>%
+  head(48)
+
+dfd
+
+Artist_Genre%>%filter(Artist_list == "Imagine Dragons")%>%select(genres_list)
+
+toString(unique(unlist(tpp[141,]$Genre)))
+
+
+
+  #mutate(Genre = unique((Genre)))
+
+  #mutate(all_genres = paste(Genre, collapse = " "))
+
+tppp['all_genres']
+
+tp = Scraped%>%
+  mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+  mutate(genre = map(Artist_sing, matchGenre))
+
+unlique <- function(artist){
+  unique(unlist(artist))
+}
+
+
+tp = tp%>%mutate(gen = map(genre, unlique))
+
+
+
+  token = getToken()
+top_genres = Scraped%>%
+  mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+  mutate(Genres = map(Artist_sing, getGenreTibble))
+
+  #group_by(Genres)%>%
+  #summarise(Total_Streams = sum(Streams))%>%
+  #arrange(desc(Total_Streams))%>%
+  #head(10)
+
+  
+  #group_by(Track, Artist )%>%
+  #summarize(Streams = sum(Streams))
+
+
+
 
 
 #Workflow 
 table[1:50,]
+
+
+
+
 
 
 
