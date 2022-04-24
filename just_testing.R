@@ -5,6 +5,9 @@ library(curl)
 library(stringr)
 library(RCurl)
 library(tibble)
+library(lubridate)
+library(purrr)
+library(tidyverse)
 
 url_test <- "https://api.spotify.com/v1/artists/3pc0bOVB5whxmD50W79wwO" 
 test = url_test %>% fromJSON()%>%.[[1]]%>%as_tibble()  #gives an error so don't bother running
@@ -30,8 +33,7 @@ auth_str = "Basic MWFkYTQwNDFiMGJkNDgyZWE0MjEyY2ZiMGIyNDYxODg6MWYzNjYwMTQyZjBjND
 #CORRECT: 
 #Generates token to be used as authorization for further API requests
 #AMBITIOUS: Check status of current token and only generate token if the token has expired (Hint: )
-test_response = content(POST(url = "https://accounts.spotify.com/api/token", accept_json(), add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
-test_response
+
 
 test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
 token = test_response2$access_token
@@ -98,14 +100,16 @@ dates = todate - (7 * (seq(0,4)))
 weeks = paste0(dates[-length(dates)],"--",dates[-1])
 offset = (interval(date1, todate)/ days (1)) %% 7
 todate - offset
+weeks = list(paste0(dates[-1] ,"--",dates[-length(dates)]))
+date_list
+append(weeks, date_list)
+list(date0, weeks)
 
 
 
 
 
-
-
-fnCurrentMonth <- function(week1_date) {
+getMonthlyWeeks <- function(week1_date) {  #calculates 4 weeks prior dates
   todate = today()
   offset = (interval(date1, todate)/ days (1)) %% 7
   if (offset!= 0){
@@ -116,11 +120,18 @@ fnCurrentMonth <- function(week1_date) {
   return(weeks)
 }
 
-fnCurrentMonth(date1)
+getToken <- function(){
+  test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
+  token = test_response2$access_token
+}
 
+
+fnCurrentMonth(date1)
+in_month = 3
+as.Date(paste0("2022-", in_month, "-01"))
 
 fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, weekly) dates for API (won't use)
-  month_date = ymd(paste0("2022-", in_month, "-01"))
+  month_date = as.Date(paste0("2022-", in_month, "-01"))
   offset = (interval(week1_date,month_date) / days (1))%%7
   date_list = c()
   total_days = days_in_month(month_date)
@@ -138,12 +149,14 @@ fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, wee
       weeks = (total_days - offset - length(li2) - 1) / 7
       weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
       weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
+ 
       date_list = append(date_list, weekly_list)
     }  
     else{    #last week of month matches URL week
       weeks = (total_days - offset  - 1) / 7
       weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
       weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
+
       date_list = append(date_list, weekly_list)
     }
   }
@@ -157,7 +170,6 @@ fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, wee
     
   }
   
-  date_list
 }
 
 #change1
@@ -177,3 +189,291 @@ result
 #args = commandArgs(trailingOnly=TRUE)
 #metaSource <- args[1]
 #Rscript <myscript.r> arg1 arg2
+
+
+
+#TESTING FR
+#TO BE REPLACED
+#------------------------------------------------------------------------------#
+url <- "https://spotifycharts.com/regional/us/weekly/"
+concat.url<- function(x){
+  full_url <- paste0(url, x)
+  full_url
+}
+
+
+#make a nested function which gets parameters set from buttons in shiny
+#region, regional/[us,ar], global
+#dates : daily: today(), weekly : offset, (maybe change month function to weekly, and run it 4 times)
+week_list = fnCurrentMonth(date1)
+finalurl = lapply(fnCurrentMonth(date1), concat.url)
+finalurl[[1]]
+
+url <- "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
+#Extract the table
+table <- finalurl[[1]] %>% read_html() %>% html_table(fill = TRUE) %>% .[[1]] 
+names(table)[1] <- "a"
+names(table)[2] <- "Number"  #name the unnamed columns so we can convert to tibble
+names(table)[3] <- "b"
+table <- as_tibble(table) %>% select(Number,Track,Streams)
+
+#Try using Selector Gadget
+artists <- url %>% read_html() %>% html_nodes("span") %>% html_text2() 
+artists[2] #This is where the artists start being listed
+artists_list <- artists[2:201] %>% as_tibble() %>% rename(Artist=value) #create a list of the artists for the given chart
+
+#Now we can clean the list by removing the "by" in every entry, leaving only the artist
+artists_list$Artist <- str_replace_all(artists_list$Artist,"by ","")
+table <- mutate(table,Artist = artists_list$Artist)
+
+
+
+table$Track <- str_replace_all(table$Track, "(?<=by).+","") #Get rid of everything preceded by "by"
+table$Track <- str_replace_all(table$Track, "by","") #Get rid of "by"
+table$Track <- trimws(table$Track,"right")
+
+table$Streams <- str_replace_all(table$Streams,"[,+]", "")
+table$Streams <- as.integer(table$Streams)
+
+#-----------------------------------------------------------------------------#
+
+spotify$Artist%>% 
+dim(spotify)
+token
+str(table$Artist)
+
+genURL <- function(){
+  
+}
+
+getSpotifyData <- function(url){
+  url <- "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
+  #Extract the table
+  table <- url[[1]] %>% read_html() %>% html_table(fill = TRUE) %>% .[[1]] 
+  names(table)[1] <- "a"
+  names(table)[2] <- "Number"  #name the unnamed columns so we can convert to tibble
+  names(table)[3] <- "b"
+  table <- as_tibble(table) %>% select(Number,Track,Streams)
+  
+  #Try using Selector Gadget
+  artists <- url %>% read_html() %>% html_nodes("span") %>% html_text2() 
+  artists[2] #This is where the artists start being listed
+  artists_list <- artists[2:201] %>% as_tibble() %>% rename(Artist=value) #create a list of the artists for the given chart
+  
+  #Now we can clean the list by removing the "by" in every entry, leaving only the artist
+  artists_list$Artist <- str_replace_all(artists_list$Artist,"by ","")
+  table <- mutate(table,Artist = artists_list$Artist)
+  
+  table$Track <- str_replace_all(table$Track, "(?<=by).+","") #Get rid of everything preceded by "by"
+  table$Track <- str_replace_all(table$Track, "by","") #Get rid of "by"
+  table$Track <- trimws(table$Track,"right")
+  
+  table$Streams <- str_replace_all(table$Streams,"[,+]", "")
+  table$Streams <- as.integer(table$Streams)
+  table
+  
+  
+}
+
+ScrapedData <- getSpotifyData("https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15")
+
+table
+
+getGenreTibble <- function(artistS){ 
+  url_encoded = URLencode(artistS)
+  genres = unique(unlist((map(url_encoded, getGenre))))
+  
+}
+
+
+getGenreArtist <- function(artist){
+  
+  search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
+  result = content(search)
+  result = result$artists$items[[1]]$genres
+  #genre_list = append(genre_list, result$artists$items[[1]]$genres)
+  
+}
+
+token = getToken()
+
+test = table%>%
+  mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+  mutate(Genres = map(Artist_sing, getGenreTibble))
+
+
+#Generates Top Artist in the Specific Period
+table%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>%
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))
+
+#generates top genre
+test%>%
+  unnest(Genres)%>%
+  group_by(Genres)%>%
+  summarise(Total_Streams = sum(Streams))%>%
+  arrange(desc(Total_Streams))%>%
+  head(10)%>%
+  ggplot(aes(Total_Streams, reorder(Genres, Total_Streams)))+
+  geom_col()
+  
+
+
+
+
+
+test2 = table%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>%
+  group_by(Artist)%>%
+  mutate(gen = map(Artist, getGenreArtist))
+
+test2%>%group_by(Track)%>%mutate(gen = toString(gen))%>%filter(Track == "'Till I Collapse")%>%select(gen)
+
+
+test2%>%mutate(gen = map(gen,unique))%>%filter(Track == "'Till I Collapse")
+test2%>%filter(Track == "'Till I Collapse")
+
+test = table%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>%
+  group_by(Artist)%>%
+  mutate(gen = map(Artist, getGenreArtist))%>%
+  unnest(c= (gen)) %>%
+  mutate(gen = unlist(gen))
+
+
+test%>%
+  group_by(gen)%>%
+  summarize(Strea = sum(Streams))%>%
+  arrange(Strea)
+  arrange(desc(Streams))
+  group_by(gen)%>%
+  ggplot(aes(  Streams, reorder(gen, -Streams)))+
+  geom_col()
+
+
+#generate functions for plotting trending genres, artists, top 10 artists in the past month
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+#TEST CASES
+  
+lis = URLencode(unlist(str_split(table$Artist,",")))
+lis[1]
+URLencode("we don't talk about bruno")
+
+test = table%>%
+  mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+  mutate(Genres = map(Artist_sing, getGenreTibble))
+
+unlist(test$Genres[199])
+
+test$Artist_sing[[181]]
+
+test3 = (separate_rows(test, Artist, sep = ", ", convert = TRUE))
+token = getToken()
+
+
+unnest(test3, cols = c(gen))
+
+test3 = test3%>%
+  group_by(Artist)%>%
+  mutate(gen = map(Artist, getGenreArtist))
+unlist(test3$gen[[247]])
+
+test3%>%
+  filter(Number == 181)
+
+unitedArtists = test3 %>%
+  group_by(Track) %>%
+  summarize(Artist = toString(Artist))
+
+test3%>%
+  inner_join(unitedArtists, by = "Track")
+ 
+test3 %>%
+  group_by(Track) %>%
+  nest %>%
+  ungroup
+
+
+test3%>%
+  mutate(Artist = str_extract(Artist, ".*(?= \\(|\\) )"))
+#165 has braces
+
+test3%>%
+  filter(str_detect(Artist, "[(]"))
+
+NAME = "4*TOWN (From Disney and Pixar’s Turning Red)"
+
+str_extract(NAME, ".*(?= County)")
+
+#RHIS WORKS
+str_extract(NAME, ".*(?= \\(|\\) )")
+
+
+test3 %>% 
+  mutate(Artist =)
+
+square <- function(li){
+  
+}
+data("mtcars") 
+mtcars %>%
+  group_by(cyl) %>%
+  group_modify()
+
+test2 = test%>%
+  mutate(Gen = map(Genres, unlist))
+test2$Gen[[199]]
+
+URLencode(test[[5]][181][[1]])
+
+unique(unlist((map(URLencode(test[[5]][181][[1]]), getGenre))))
+
+test[[5]][[181]]
+
+
+token = getToken()
+genre_list = c()
+
+map(test[[5]][181],getGenreTibble)[[1]]
+
+
+lapply(lis, genre_f)
+lis[1]
+search = GET(paste0("https://api.spotify.com/v1/search?q=", lis[1],"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
+result = content(search)
+result$artists$items[[1]]$genres
+
+items[[1]]$genres[[1]]
+
+search = GET("https://api.spotify.com/v1/search?q=we%20don't%20talk%20about%20bruno&type=track&limit=1",add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
+result = content(search)
+result$tracks$items[[1]]$artists
+"https://api.spotify.com/v1/search?q=first%20class&type=track&limit=1"
