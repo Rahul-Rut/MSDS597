@@ -66,52 +66,6 @@ day(date1) %% 7
 date0 = floor_date( ymd(date1), 'month')
 date0
 
-(interval(date0,date1) / days (1))%%7
-#logic: diff mod 7 gives the number of days from start where to calculate daily
-
-li = seq(0, 3)
-offset = 1
-date0
-dl = as.Date(date0) + li
-dl
-date_k = c()
-date_k = append(date_k, dl)
-date_k[length(date_k)]
-
-tes = ymd(paste0("2022-",5, "-01"))
-offset = (interval(date1,tes) / days (1))%%7
-offset
-date_list = c()
-total_days = days_in_month(tes)
-total_days
-back_off = (total_days - offset - 1)%%7
-li = seq(0, offset-1) 
-som_dates = as.Date(tes) + li     #last_date is week1 date for weekly
-date_list = append(date_list, som_dates) 
-
-weeks = (31 - offset  - 1) / 7
-weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
-weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
-date_list = append(date_list, weekly_list)
-todate = today()
-seq(0,4)
-
-weekly = month_date + (7 * seq(0,weeks))
-dates = todate - (7 * (seq(0,4)))
-weeks = paste0(dates[-length(dates)],"--",dates[-1])
-offset = (interval(date1, todate)/ days (1)) %% 7
-todate - offset
-weeks = list(paste0(dates[-1] ,"--",dates[-length(dates)]))
-date_list
-append(weeks, date_list)
-list(date0, weeks)
-
-
-as.list(weeks)
-
-seq(0,1)
-
-
 getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates; n is number of weeks
   todate = today()
   offset = (interval(week1_date, todate)/ days (1)) %% 7
@@ -137,6 +91,8 @@ fnCurrentMonth(date1)
 in_month = 3
 as.Date(paste0("2022-", in_month, "-01"))
 
+
+#Do Not Run!!!!!!!
 fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, weekly) dates for API (won't use)
   month_date = as.Date(paste0("2022-", in_month, "-01"))
   offset = (interval(week1_date,month_date) / days (1))%%7
@@ -200,7 +156,7 @@ result
 
 
 #TESTING FR
-#TO BE REPLACED
+#DONOTRUN
 #------------------------------------------------------------------------------#
 url <- "https://spotifycharts.com/regional/us/weekly/"
 
@@ -245,6 +201,8 @@ table$Streams <- as.integer(table$Streams)
 
 #-----------------------------------------------------------------------------#
 
+
+#RUN FROM HERE
 spotify$Artist%>% 
 dim(spotify)
 token
@@ -258,6 +216,7 @@ genURL <- function(){
   
 }
 
+#IMPORTANT
 getSpotifyCharts <- function(url, month_bin = 0){
 
   #Extract the table
@@ -308,9 +267,9 @@ weeks = getWeeks(date1)
 lapply(weeks, getSpotifyCharts())
 
  
-weeks = getWeeks(date1)
-month_list = map2( map(weeks, concat.url),1, getSpotifyCharts) 
-month_list%>%
+weeks = getWeeks(date1, n =4)
+month_list = map2( map(weeks, concat.url),1, getSpotifyCharts)
+month_scraped =  month_list%>%
   bind_rows(.)%>%
   group_by(Track, Artist )%>%
   summarize(Streams = sum(Streams))
@@ -335,8 +294,6 @@ getGenreArtist <- function(artist){
   
  tryCatch(  {search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
   result = content(search)
-  message(artist)
-  message(result$artists$items[[1]]$genres)
   result = result$artists$items[[1]]$genres}, error = function(e){})
   #genre_list = append(genre_list, result$artists$items[[1]]$genres)
   
@@ -363,8 +320,9 @@ test%>%
   summarise(Total_Streams = sum(Streams))%>%
   arrange(desc(Total_Streams))%>%
   head(10)%>%
-  ggplot(aes(Total_Streams, reorder(Genres, Total_Streams)))+
-  geom_col()
+  ggplot(aes(Total_Streams, reorder(Genres, Total_Streams/1000000)))+
+  geom_col()+
+  labs(x="Total_Streams(in Millions)")
   
 
 #lets make a separate dataframe for yearly scraped data @_@
@@ -396,13 +354,14 @@ ten_artists = Scraped%>%
 pull(ten_artists)
 
 #top10 artists performance over the year each month
-Scraped%>%
+global_year_artist_plot = Scraped%>%
   separate_rows(Artist, sep = ", ", convert = TRUE)%>% 
   group_by(Artist, Month)%>%
   summarize(Total_Streams = sum(Streams))%>%
   filter(Artist %in% pull(ten_artists))%>%
-  ggplot(aes(Month, Total_Streams, color = Artist))+
-  geom_line()
+  ggplot(aes(Month, Total_Streams/1000000, color = Artist))+
+  geom_line()+
+  labs(y = "Total Streams (in Millions)", x = "Month(Reverse Order)")
   
 #investigating the peak
 Scraped%>%
@@ -445,30 +404,28 @@ tpp = Scraped%>%
 
 
 
-tppp = tpp%>%
+global_year = tpp%>%
   ungroup()%>%
   group_by(Track, Month)%>%
   mutate(Genre = toString(unique(unlist(Genre))))%>%
   separate_rows(Genre, sep = ", ")
 
-tr = tppp%>%
+tr = global_year%>%
   ungroup()%>%
   group_by(Genre)%>%
   summarize(Total_Streams = sum(Streams))%>%  #tally() here would give appearances of these genres per week
   arrange(desc(Total_Streams))%>%
+  select(Genre)%>%
   head(10)
-tr$Genre
 
+global_year_genre_plot = global_year%>% 
+  group_by(Genre, Month)%>%
+  summarize(Total_Streams = sum(Streams))%>%
+  filter(Genre %in% pull(tr))%>%
+  ggplot(aes(Month, Total_Streams/1000000, color = Genre))+
+  geom_line()+
+  labs(y = "Total Streams (in Millions)", x = "Month(Reverse Order)")
 
-dfd = tppp%>%
-  filter(Track == "Enemy (with JID) - from the series Arcane League of Legends")%>%
-  head(48)
-
-dfd
-
-Artist_Genre%>%filter(Artist_list == "Imagine Dragons")%>%select(genres_list)
-
-toString(unique(unlist(tpp[141,]$Genre)))
 
 
 
@@ -673,3 +630,52 @@ search = GET("https://api.spotify.com/v1/search?q=we%20don't%20talk%20about%20br
 result = content(search)
 result$tracks$items[[1]]$artists
 "https://api.spotify.com/v1/search?q=first%20class&type=track&limit=1"
+
+
+(interval(date0,date1) / days (1))%%7
+#logic: diff mod 7 gives the number of days from start where to calculate daily
+
+li = seq(0, 3)
+offset = 1
+date0
+dl = as.Date(date0) + li
+dl
+date_k = c()
+date_k = append(date_k, dl)
+date_k[length(date_k)]
+
+tes = ymd(paste0("2022-",5, "-01"))
+offset = (interval(date1,tes) / days (1))%%7
+offset
+date_list = c()
+total_days = days_in_month(tes)
+total_days
+back_off = (total_days - offset - 1)%%7
+li = seq(0, offset-1) 
+som_dates = as.Date(tes) + li     #last_date is week1 date for weekly
+date_list = append(date_list, som_dates) 
+
+weeks = (31 - offset  - 1) / 7
+weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
+weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
+date_list = append(date_list, weekly_list)
+todate = today()
+seq(0,4)
+
+weekly = month_date + (7 * seq(0,weeks))
+dates = todate - (7 * (seq(0,4)))
+weeks = paste0(dates[-length(dates)],"--",dates[-1])
+offset = (interval(date1, todate)/ days (1)) %% 7
+todate - offset
+weeks = list(paste0(dates[-1] ,"--",dates[-length(dates)]))
+date_list
+append(weeks, date_list)
+list(date0, weeks)
+
+
+as.list(weeks)
+
+seq(0,1)
+
+
+
