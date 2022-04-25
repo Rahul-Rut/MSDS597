@@ -35,7 +35,6 @@ table$Streams <- as.integer(table$Streams)
 #Can we split the Artists column somehow?
 
 
-
 #Exploring what we have so far
 top <- table %>% mutate(Track=reorder(Track,Streams)) %>% head(10)
 ggplot(top) + geom_col(aes(Streams,Track)) + ggtitle("Top Tracks This Week")
