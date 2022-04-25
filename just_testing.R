@@ -296,7 +296,33 @@ weeks = getWeeks(date1)
 
 lapply(weeks, getSpotifyCharts())
 
- 
+url = "https://spotifycharts.com/regional/us/daily/2022-04-24"
+us_daily =   getSpotifyCharts(url)
+us_daily_artist = us_daily%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))%>%
+  head(10)%>%
+  mutate(Artist=reorder(Artist,Total_Stream))%>%
+  ggplot()+ 
+  geom_col(aes(Total_Stream,Artist)) + 
+  ggtitle("Top Tracks Today US")
+
+
+url = "https://spotifycharts.com/regional/global/daily/latest"
+global_daily =   getSpotifyCharts(url)
+global_daily_artist = global_daily%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))%>%
+  head(10)%>%
+  mutate(Artist=reorder(Artist,Total_Stream))%>%
+  ggplot()+ 
+  geom_col(aes(Total_Stream,Artist)) + 
+  ggtitle("Top Tracks Today Global")
+
 weeks = getWeeks(date1, n =4)
 month_list = map2( map(weeks, concat.url),1, getSpotifyCharts)
 month_scraped =  month_list%>%
@@ -304,6 +330,7 @@ month_scraped =  month_list%>%
   group_by(Track, Artist )%>%
   summarize(Streams = sum(Streams))
 
+#done above with map
 for (i in weeks){
   url = "https://spotifycharts.com/regional/global/weekly/"
   i = paste0(url,i)
