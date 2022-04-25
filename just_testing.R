@@ -5,10 +5,6 @@ library(curl)
 library(stringr)
 library(RCurl)
 library(tibble)
-library(lubridate)
-library(purrr)
-library(tidyverse)
-library(shiny)
 
 url_test <- "https://api.spotify.com/v1/artists/3pc0bOVB5whxmD50W79wwO" 
 test = url_test %>% fromJSON()%>%.[[1]]%>%as_tibble()  #gives an error so don't bother running
@@ -34,7 +30,8 @@ auth_str = "Basic MWFkYTQwNDFiMGJkNDgyZWE0MjEyY2ZiMGIyNDYxODg6MWYzNjYwMTQyZjBjND
 #CORRECT: 
 #Generates token to be used as authorization for further API requests
 #AMBITIOUS: Check status of current token and only generate token if the token has expired (Hint: )
-
+test_response = content(POST(url = "https://accounts.spotify.com/api/token", accept_json(), add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
+test_response
 
 test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
 token = test_response2$access_token
@@ -66,35 +63,70 @@ day(date1) %% 7
 date0 = floor_date( ymd(date1), 'month')
 date0
 
+<<<<<<< HEAD
 getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates; n is number of weeks
+=======
+(interval(date0,date1) / days (1))%%7
+#logic: diff mod 7 gives the number of days from start where to calculate daily
+
+li = seq(0, 3)
+offset = 1
+date0
+dl = as.Date(date0) + li
+dl
+date_k = c()
+date_k = append(date_k, dl)
+date_k[length(date_k)]
+
+tes = ymd(paste0("2022-",5, "-01"))
+offset = (interval(date1,tes) / days (1))%%7
+offset
+date_list = c()
+total_days = days_in_month(tes)
+total_days
+back_off = (total_days - offset - 1)%%7
+li = seq(0, offset-1) 
+som_dates = as.Date(tes) + li     #last_date is week1 date for weekly
+date_list = append(date_list, som_dates) 
+
+weeks = (31 - offset  - 1) / 7
+weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
+weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
+date_list = append(date_list, weekly_list)
+todate = today()
+seq(0,4)
+
+weekly = month_date + (7 * seq(0,weeks))
+dates = todate - (7 * (seq(0,4)))
+weeks = paste0(dates[-length(dates)],"--",dates[-1])
+offset = (interval(date1, todate)/ days (1)) %% 7
+todate - offset
+
+
+
+
+
+
+
+fnCurrentMonth <- function(week1_date) {
+>>>>>>> 4d54010041d7d47b3cd9d03858f240dc9785f802
   todate = today()
-  offset = (interval(week1_date, todate)/ days (1)) %% 7
+  offset = (interval(date1, todate)/ days (1)) %% 7
   if (offset!= 0){
     todate = todate - offset
   }
-  
-  
-  dates = todate - (7 * (seq(0,n)))
+  dates = todate - (7 * (seq(0,4)))
   weeks = paste0(dates[-1] ,"--",dates[-length(dates)])
-  return(as.list(weeks))
+  return(weeks)
 }
-
-getWeeks(date1,53)
-
-getToken <- function(){
-  test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
-  token = test_response2$access_token
-}
-
 
 fnCurrentMonth(date1)
-in_month = 3
-as.Date(paste0("2022-", in_month, "-01"))
+
 
 
 #Do Not Run!!!!!!!
 fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, weekly) dates for API (won't use)
-  month_date = as.Date(paste0("2022-", in_month, "-01"))
+  month_date = ymd(paste0("2022-", in_month, "-01"))
   offset = (interval(week1_date,month_date) / days (1))%%7
   date_list = c()
   total_days = days_in_month(month_date)
@@ -112,14 +144,12 @@ fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, wee
       weeks = (total_days - offset - length(li2) - 1) / 7
       weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
       weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
- 
       date_list = append(date_list, weekly_list)
     }  
     else{    #last week of month matches URL week
       weeks = (total_days - offset  - 1) / 7
       weekly = date_list[length(date_list)]+1 + (7 * seq(0,weeks))
       weekly_list = paste0(weekly[-length(weekly)],"--",weekly[-1])
-
       date_list = append(date_list, weekly_list)
     }
   }
@@ -133,6 +163,7 @@ fnMonthly <- function(week1_date, in_month) {  #this generates dates (daily, wee
     
   }
   
+  date_list
 }
 
 #change1
@@ -151,6 +182,7 @@ result
 
 #args = commandArgs(trailingOnly=TRUE)
 #metaSource <- args[1]
+<<<<<<< HEAD
 #Rscript <myscript.r> arg1 arg2
 
 
@@ -679,3 +711,6 @@ seq(0,1)
 
 
 
+=======
+#Rscript <myscript.r> arg1 arg2
+>>>>>>> 4d54010041d7d47b3cd9d03858f240dc9785f802

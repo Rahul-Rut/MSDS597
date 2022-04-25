@@ -46,9 +46,8 @@ ggplot(topartists) + geom_col(aes(n,Artist)) + ggtitle("Top Artists This Week") 
 
 #What about artists with only one song on the chart?
 singles <- table %>% group_by(Artist) %>% summarise(n=n()) %>% filter(n==1)
-onehitwonders <- table %>% semi_join(singles,by="Artist") %>% mutate(Artist=reorder(Artist,Streams)) %>% head(10)
-ggplot(onehitwonders) + geom_col(aes(Streams,Artist)) + ggtitle("Top Tracks By Artists w/ One Song")
-
+table %>% semi_join(singles,by="Artist") %>% mutate(Track=reorder(Track,Streams)) %>% head(10) %>%
+  ggplot() + geom_col(aes(Streams,Track)) + ggtitle("Top Tracks By Artists w/ One Song")
 
 
 
