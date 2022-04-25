@@ -109,7 +109,6 @@ todate - offset
 
 
 fnCurrentMonth <- function(week1_date) {
->>>>>>> 4d54010041d7d47b3cd9d03858f240dc9785f802
   todate = today()
   offset = (interval(date1, todate)/ days (1)) %% 7
   if (offset!= 0){
@@ -182,7 +181,6 @@ result
 
 #args = commandArgs(trailingOnly=TRUE)
 #metaSource <- args[1]
-<<<<<<< HEAD
 #Rscript <myscript.r> arg1 arg2
 
 
