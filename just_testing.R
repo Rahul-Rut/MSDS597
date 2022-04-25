@@ -307,8 +307,34 @@ us_daily_artist = us_daily%>%
   mutate(Artist=reorder(Artist,Total_Stream))%>%
   ggplot()+ 
   geom_col(aes(Total_Stream,Artist)) + 
-  ggtitle("Top Tracks Today US")
+  ggtitle("Top Artists Today US")
 
+
+url = "https://spotifycharts.com/regional/us/weekly/latest"
+us_weekly =   getSpotifyCharts(url)
+us_weekly_artist = us_weekly%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))%>%
+  head(10)%>%
+  mutate(Artist=reorder(Artist,Total_Stream))%>%
+  ggplot()+ 
+  geom_col(aes(Total_Stream,Artist)) + 
+  ggtitle("Top Artists This Week US")
+
+url = "https://spotifycharts.com/regional/global/weekly/latest"
+global_weekly =   getSpotifyCharts(url)
+global_weekly_artist = global_weekly%>%
+  separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
+  group_by(Artist)%>%
+  summarize(Total_Stream = sum(Streams))%>%
+  arrange(desc(Total_Stream))%>%
+  head(10)%>%
+  mutate(Artist=reorder(Artist,Total_Stream))%>%
+  ggplot()+ 
+  geom_col(aes(Total_Stream,Artist)) + 
+  ggtitle("Top Artists This Week Global")
 
 url = "https://spotifycharts.com/regional/global/daily/latest"
 global_daily =   getSpotifyCharts(url)
