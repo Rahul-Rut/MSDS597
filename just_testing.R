@@ -5,6 +5,14 @@ library(curl)
 library(stringr)
 library(RCurl)
 library(tibble)
+library(lubridate)
+library(shiny)
+library(dplyr)
+library(purr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+
 
 url_test <- "https://api.spotify.com/v1/artists/3pc0bOVB5whxmD50W79wwO" 
 test = url_test %>% fromJSON()%>%.[[1]]%>%as_tibble()  #gives an error so don't bother running
@@ -36,7 +44,12 @@ test_response
 test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form", verbose() ))
 token = test_response2$access_token
 
+genToken <- function(){
+  test_response2 = content(POST(url = "https://accounts.spotify.com/api/token", add_headers("Authorization" = auth_str) ,body = list(grant_type = "client_credentials"), encode = "form" ))
+  token = test_response2$access_token
+}
 
+token = genToken()
 #artist using our VERY OWN SELF-GENERATED token
 #same can be done for several artists, track and several tasks
 artist = GET("https://api.spotify.com/v1/artists/3pc0bOVB5whxmD50W79wwO",add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
@@ -63,9 +76,19 @@ day(date1) %% 7
 date0 = floor_date( ymd(date1), 'month')
 date0
 
-<<<<<<< HEAD
-getWeeks <- function(week1_date, n =1) {  #calculates 1 week prior dates; n is number of weeks
-=======
+getWeeks <- function(week1_date, n =1) {   #calculates 1 week prior dates; n is number of weeks
+  todate = today()
+  offset = (interval(date1, todate)/ days (1)) %% 7
+  if (offset!= 0){
+    todate = todate - offset
+  }
+  dates = todate - (7 * (seq(0,n)))
+  weeks = paste0(dates[-1] ,"--",dates[-length(dates)])
+  return(weeks)
+}
+  
+(getWeeks(date1,2))
+
 (interval(date0,date1) / days (1))%%7
 #logic: diff mod 7 gives the number of days from start where to calculate daily
 
@@ -323,7 +346,7 @@ us_weekly_artist = us_weekly%>%
   geom_col(aes(Total_Stream,Artist)) + 
   ggtitle("Top Artists This Week US")
 
-url = "https://spotifycharts.com/regional/global/weekly/latest"
+url = "https://spotifycharts.com/regional/us/weekly/latest"
 global_weekly =   getSpotifyCharts(url)
 global_weekly_artist = global_weekly%>%
   separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
@@ -366,14 +389,16 @@ for (i in weeks){
 
 #The following two functions are meant for extracting Genre
 
-getGenreTibble <- function(artistS){ 
+getGenreTibble <- function(artistS, token){ 
   url_encoded = URLencode(artistS)
-  genres = unique(unlist((map(url_encoded, getGenre))))
+  genres = unique(unlist((map2(url_encoded, token ,getGenreArtist))))
   
 }
 
 
-getGenreArtist <- function(artist){
+search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
+
+getGenreArtist <- function(artist, token){
   
  tryCatch(  {search = GET(paste0("https://api.spotify.com/v1/search?q=", artist ,"&type=artist&limit=1"),add_headers("Content-Type"="application/json", "Authorization" = paste("Bearer", token) ))
   result = content(search)
@@ -382,11 +407,23 @@ getGenreArtist <- function(artist){
   
 }
 
-token = getToken()
+token = genToken()
 
 test = table%>%
   mutate(Artist_sing = (str_split(Artist, ", ")))%>%
   mutate(Genres = map(Artist_sing, getGenreTibble))
+
+table%>%
+  mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+  mutate(Genres = map(Artist_sing, getGenreTibble))%>%
+  unnest(Genres)%>%
+  group_by(Genres)%>%
+  summarise(Total_Streams = sum(Streams))%>%
+  arrange(desc(Total_Streams))%>%
+  head(10)%>%
+  ggplot(aes(Total_Streams, reorder(Genres, Total_Streams/1000000)))+
+  geom_col()+
+  labs(x="Total_Streams(in Millions)")
 
 
 #Generates Top Artist in the Specific Period
@@ -546,10 +583,99 @@ top_genres = Scraped%>%
   #summarize(Streams = sum(Streams))
 
 
+date1 = "2022-04-01"
+country_list = c("Global", "USA", "UK", "Australia", "Brazil", "Canada")
+code_list = c("global","us","gb","au","br","ca")
+concode = tibble(country_list, code_list)
+matchRegion <- function(region){
+  concode%>%filter(country_list == region)%>%select(code_list)
+}
+
+
+getDates<- function(time_period){
+  if (time_period == "Monthly")
+  {
+    dates = getWeeks(date1, n = 4)
+    suffix = paste0("/weekly/",dates)
+  }
+  else if (time_period == "Daily")
+  {
+    return (c("/daily/latest/"))
+  }
+  else if (time_period == "Weekly")
+  {
+    return (c("/weekly/latest/"))
+  }
+}
 
 
 
-#Workflow 
+getScraped <- function(region,dates){
+  URL = paste0("https://spotifycharts.com/regional/",region,dates)
+  if (length(URL) == 1){
+    getSpotifyCharts(URL)
+    
+  }
+  else {
+    month_list = map2( URL,1, getSpotifyCharts)
+    month_scraped =  month_list%>%
+      bind_rows(.)
+  }
+}
+
+main <- function(region, time_period){
+  
+ #a function to concat region, time
+  region_code = matchRegion(region)
+  
+  dates = getDates(time_period) #start with != monthly, set n_bin
+  
+  scraped = getScraped(region_code,dates)
+  
+  token = genToken()
+  
+  
+  art_plot <<- scraped%>%
+    separate_rows(Artist, sep = ",", convert = TRUE)%>% #splits Artists
+    group_by(Artist)%>%
+    summarize(Total_Stream = sum(Streams))%>%
+    arrange(desc(Total_Stream))%>%
+    head(10)%>%
+    mutate(Artist=reorder(Artist,Total_Stream))%>%
+    ggplot()+ 
+    geom_col(aes(Total_Stream,Artist)) + 
+    ggtitle(paste("Top Artists", time_period ,region))
+  
+  genplot <- scraped%>%
+    mutate(Artist_sing = (str_split(Artist, ", ")))%>%
+    mutate(Genres = map2(Artist_sing, token, getGenreTibble))%>%
+    unnest(Genres)%>%
+    group_by(Genres)%>%
+    summarise(Total_Streams = sum(Streams))%>%
+    arrange(desc(Total_Streams))%>%
+    head(10)%>%
+    ggplot(aes(Total_Streams, reorder(Genres, Total_Streams/1000000)))+
+    geom_col()+
+    labs(x="Total_Streams(in Millions)", y= "Genre", title = paste("Top Genres",time_period ,region))
+  return(genplot)
+  
+  
+ #a function to generate dates
+ #scrape
+ #get genre
+ #plot genre, artist
+ 
+}
+
+suffix
+
+scraped = getScraped("uk",suffix)
+
+main("UK","Monthly")
+
+
+
+  #Workflow 
 table[1:50,]
 
 
@@ -760,8 +886,3 @@ as.list(weeks)
 
 seq(0,1)
 
-
-
-=======
-#Rscript <myscript.r> arg1 arg2
->>>>>>> 4d54010041d7d47b3cd9d03858f240dc9785f802
