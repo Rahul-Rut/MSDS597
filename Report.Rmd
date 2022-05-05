@@ -1,0 +1,87 @@
+---
+title: "Report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(jsonlite)
+library(httr) 
+library(curl) 
+library(stringr)
+library(RCurl)
+library(tibble)
+library(lubridate)
+library(shiny)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+```
+
+## Initial Exploration
+
+The first thing we must do is bring the data into R. We do so by scraping the table from the Spotify Charts website.
+The url used in this report opens the Top 200 Songs globally for the week of April 8th - April 15th 2022.
+
+Initially, our data only shows the title of the track and the number of streams. We need to find a way to add the artists to this data.
+
+```{r Scrape, echo=FALSE}
+#Specify the link
+url <- "https://spotifycharts.com/regional/global/weekly/2022-04-08--2022-04-15"
+#Extract the table
+table <- url %>% read_html() %>% html_table(fill = TRUE) %>% .[[1]] 
+names(table)[1] <- "a"
+names(table)[2] <- "Number"  #name the unnamed columns so we can convert to tibble
+names(table)[3] <- "b"
+table <- as_tibble(table) %>% select(Number,Track,Streams)
+head(table)
+# This gives us the title of the track and number of streams, but doesn't list the artist!
+```
+
+To add an artist column, we can use Selector Gadget to find the specific node id for artists. We extract the artists from the site as a column and append it to our data. 
+
+```{r Artists, echo=FALSE}
+artists <- url %>% read_html() %>% html_nodes("span") %>% html_text2() 
+artists_list <- artists[2:201] %>% as_tibble() %>% rename(Artist=value) #create a list of the artists for the given chart
+#Now we can clean the list by removing the "by" in every entry, leaving only the artist
+artists_list$Artist <- str_replace_all(artists_list$Artist,"by ","")
+#Add the artists to the original table
+table <- mutate(table,Artist = artists_list$Artist)
+head(table)
+```
+
+The next step is to clean the data. We still have a new line and the artist name in the track title, and streams are recorded as characters, not integers. Once we remedy this, we have our final data.
+
+```{r Clean, echo=FALSE}
+#Fix the track names
+table$Track <- str_replace_all(table$Track, "(?<=by).+","") #Get rid of everything preceded by "by"
+table$Track <- str_replace_all(table$Track, "by","") #Get rid of "by"
+table$Track <- trimws(table$Track,"right") #Get rid of trailing white space
+#Convert streams to numbers
+table$Streams <- str_replace_all(table$Streams,"[,+]", "")
+table$Streams <- as.integer(table$Streams)
+head(table)
+```
+
+Now we can create some basic visualizations. The first thing we wanted to see was the top tracks for the week. 
+
+```{r Top Tracks, echo=FALSE}
+top <- table %>% mutate(Track=reorder(Track,Streams)) %>% head(10)
+ggplot(top) + geom_col(aes(Streams,Track)) + ggtitle("Top Tracks This Week")
+```
+
+We see that As It Was by Harry Styles is extremely popular this week!
+
+Next we can explore the number of hits artists have had chart this week.
+
+```{r Number of Hits, echo=FALSE}
+topartists <- table %>% group_by(Artist) %>% summarise(n=n()) %>% mutate(Artist=reorder(Artist,n)) %>% filter(n>1)
+ggplot(topartists) + geom_col(aes(n,Artist)) + ggtitle("Top Artists This Week") + xlab("Number of Songs")
+```
+
+Olivia Rodrigo was extremely popular, with 7 songs on the Top 200 this week.
+
+

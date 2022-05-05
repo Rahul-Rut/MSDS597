@@ -8,7 +8,7 @@ In this project, we scrape "Top 200 Charts" data from [Spotify Charts](https://s
 
 ### Explore.R
 
-
+* This file contains the initial exploration of the Spotify Charts data, including scraping the data from the website, cleaning, and basic visualizations.
 
 ### FINAL_CODE.R
 
