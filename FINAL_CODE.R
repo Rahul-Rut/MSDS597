@@ -393,7 +393,7 @@ global_year_genre_plot = global_year%>%
   filter(Genre %in% pull(tr))%>%
   ggplot(aes(Month, Total_Streams/1000000, color = Genre))+
   geom_line()+
-  labs(y = "Total Streams (in Millions)", x = "Month(Reverse Order)")
+  labs(y = "Total Streams (in Millions)", x = "Month(Reverse Order)") 
 
 
 
