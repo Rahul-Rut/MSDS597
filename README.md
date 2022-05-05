@@ -19,7 +19,7 @@ In this project, we scrape "Top 200 Charts" data from [Spotify Charts](https://s
 ### App.R
 
 * Standalone Shiny App implemented, which provides the User with the option of choosing a specific region and time frame, and generates plots of Top Artists and Genres in real time dynamically. 
-* Note: This app uses functions defined in the FINAL_CODE.R file and hence, it is necessary to have those functions stores in environment
+* Note: This app uses functions defined in the FINAL_CODE.R file and hence, it is necessary to have those functions stored in environment
 
 
 ### just_testing.R
