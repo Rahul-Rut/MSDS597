@@ -256,7 +256,6 @@ main <- function(region, time_period){   #accepts input from shiny app aka desir
   
 #This Generates plot for TOP GENRES in given time and region
   genplot <- scraped%>%
-<<<<<<< HEAD
     mutate(Artist_sing = (str_split(Artist, ", ")))%>%   #splits the artists in a tibble for a given song
     mutate(Genres = map2(Artist_sing, token, getGenreTibble))%>%  #get genre per song
     unnest(Genres)%>%     #splits every genre into each row (more like pivot longer)
@@ -265,7 +264,6 @@ main <- function(region, time_period){   #accepts input from shiny app aka desir
     arrange(desc(Total_Streams))%>%    #arrange into descending order per total streams
     head(10)%>%                        #store just the top 10
     ggplot(aes(Total_Streams, reorder(Genres, Total_Streams/1000000)))+   #plot top 10 genres
-=======
     mutate(Artist_sing = (str_split(Artist, ", ")))%>%
     mutate(Genres = map2(Artist_sing, token, getGenreTibble))%>%
     unnest(Genres)%>%
@@ -274,7 +272,6 @@ main <- function(region, time_period){   #accepts input from shiny app aka desir
     arrange(desc(Total_Streams))%>%
     head(10)%>%
     ggplot(aes(Total_Streams, reorder(Genres, Total_Streams/1000000)))+
->>>>>>> 28ada6f54be3c57b0ddf38a60a27fd2a81cebbb3
     geom_col()+
     labs(x="Total_Streams(in Millions)", y= "Genre", title = paste("Top Genres",time_period ,region))
   return(genplot)
@@ -321,7 +318,7 @@ ten_artists = Scraped%>%
   head(10)                                            #extract just the top 10
 
 
-
+options(dplyr.summarise.inform = FALSE)
 #top10 artists performance over the year each month
 global_year_artist_plot = Scraped%>%
   separate_rows(Artist, sep = ", ", convert = TRUE)%>% 

@@ -6,6 +6,12 @@ Repository for Final Project
 In this project, we scrape "Top 200 Charts" data from [Spotify Charts](https://spotifycharts.com/regional/us/weekly/) over different regions and time periods, which was later used to discover trends like top artists and genres for those specific conditions (time and region). The charts, however, do not contain genres and hence, [Spotify API](https://developer.spotify.com/documentation/web-api/) following [Client Credentails Flow](https://developer.spotify.com/documentation/general/guides/authorization/client-credentials/) using [various endpoints](https://developer.spotify.com/documentation/web-api/reference/#/operations/search) were used.
 
 
+### Report.rmd
+* The final report which needs to be executed by the User in order to access the Shiny App since a Shiny Application cannot be present in a static HTML page. It also contains all the required functions combined from the following R Scripts in one
+* Running this take really long since mostly due to the calculation of Yearly Data dynamically. Using a data store might be a better alternative, at least for the yearly data
+
+
+
 ### Explore.R
 
 * This file contains the initial exploration of the Spotify Charts data, including scraping the data from the website, cleaning, and basic visualizations.
