@@ -8,7 +8,9 @@ In this project, we scrape "Top 200 Charts" data from [Spotify Charts](https://s
 
 ### Report.rmd
 * The final report which needs to be executed by the User in order to access the Shiny App since a Shiny Application cannot be present in a static HTML page. It also contains all the required functions combined from the following R Scripts in one
+
 * Running this takes a really long time mostly due to the calculation of Yearly Data dynamically. Using a data store might be a better alternative, at least for the yearly data
+
 
 
 
