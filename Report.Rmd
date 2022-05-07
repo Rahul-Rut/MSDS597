@@ -28,10 +28,14 @@ library(tidyverse)
 options(dplyr.summarise.inform = FALSE) #This disables messages that cannot be categorized as warnings
 ```
 
+## Introduction
+
+The purpose of this project is to investigate music trends using the Spotify Charts website. We wanted to explore the top Spotify artists and genres over a specific period of time. This report outlines our process, from scraping the data from the website, cleaning the data, creating functions to analyze the data, to an interactive Shiny app. In addition, we used the Spotify API to help generate the genre for the top tracks as that is not included in the charts.
+
 ## Initial Exploration
 
 The first thing we must do is bring the data into R. We do so by scraping the table from the Spotify Charts website.
-The url used in this report opens the Top 200 Songs globally for the week of April 8th - April 15th 2022.
+The url used in this section of the report opens the Top 200 Songs globally for the week of April 8th - April 15th 2022.
 
 Initially, our data only shows the title of the track and the number of streams. We need to find a way to add the artists to this data.
 
@@ -91,7 +95,7 @@ ggplot(topartists) + geom_col(aes(n,Artist)) + ggtitle("Top Artists This Week") 
 
 Olivia Rodrigo was extremely popular, with 7 songs on the Top 200 this week.
 
-```{r echo = FALSE}
+```{r Function, echo=FALSE}
 
 #Note: the previous chunks have been modified to an extent and will now be used as a function to retrieve scraped data!
 
@@ -161,7 +165,7 @@ However, these tokens have a lifespan of 60 minutes so we need to regenerate the
 
 
 This is how a RESPONSE from one such Endpoint (Get Artist) looks like:
-```{r echo = FALSE}
+```{r API, echo=FALSE}
 #Generating API Token
 
 #The use of Spotify API requires Client Credentials which are provided as follows
@@ -213,7 +217,7 @@ To sum it up, from the Scraped Data, we will pass the Artists' Names to the Sear
 An instance, after adding genres and splitting/unnest-ing the same (since genres are stored as lists) looks as follows:
 
 
-```{r echo=FALSE}
+```{r Genre, echo=FALSE}
 
 #This function fetches Genre of a given Artist from Spotify API and passes onto the "getGenreTibble" Function
 
@@ -265,7 +269,7 @@ table%>%
 
 ## Expanding our Scraping
 
-The Top Charts displayed can be modified for two parameters: Region and Time (Daily and Weekly)
+The Top Charts displayed can be modified for two parameters: Region and Time (Daily and Weekly).
 
 
 The typical URL looks as follows: 
@@ -280,7 +284,7 @@ But that isn't all there is to the time frame! Charts from older days and weeks 
 
 Above is one such example wherein an older week's chart was retrieved using the URL above.
 
-Now that we know that we can acquire older data by modifying the URL, we will do so and generate Monthly Data (assuming 4 previous weeks constitute a month) and Yearly data (assuming 48 weeks form a year)
+Now that we know that we can acquire older data by modifying the URL, we will do so and generate Monthly Data (assuming 4 previous weeks constitute a month) and Yearly data (assuming 48 weeks form a year).
 
 
 
@@ -288,7 +292,7 @@ Now that we know that we can acquire older data by modifying the URL, we will do
 Following is how the generated dates range for weekly URL look like:
 
 
-```{r echo = FALSE}
+```{r Date, echo=FALSE}
 date1 = "2022-04-01" #A reference date used to generate weekly dates
 
 #As it will be seen further, the "Weekly" Data will be used to generate Weekly, Monthly as well as Yearly Data.
@@ -330,12 +334,12 @@ These can then, along with the Regions, be appended to the URL and be used to re
 ## Shiny Application
 
 
-Using the previously defined functions up until now, we will integrate them all in a Shiny Application which dynamically displays two plots : Top Genres and Top Artists for a specific Region and Time Frame
+Using the previously defined functions up until now, we will integrate them all in a Shiny Application which dynamically displays two plots : Top Genres and Top Artists for a specific Region and Time Frame.
 
 
 Disclaimer: Generating Plots takes some time since scraping, and running several API requests (the same number as artists present in the chart) happens in real time which can cause some delay. This is done in order to fetch real data and make this application dynamic in nature! So, it is requested that you do not spam the "Generate Plots" button, and patiently wait.
 
-```{r echo = FALSE}
+```{r Plots, echo = FALSE}
 
 #The following lines of code are specific for the app
 
@@ -456,7 +460,7 @@ main <- function(region, time_period, plot_type){   #accepts input from shiny ap
 ```
 
 
-```{r echo = FALSE}
+```{r Shiny, echo = FALSE}
 
 region_choices = c("Global", "USA", "UK", "Australia", "Brazil", "Canada") #used in dropdown for region
 library(shiny)
@@ -504,7 +508,7 @@ server = function(input, output, session) {
 ```
 
 
-### Note: Be sure to close the shiny tab WHILE runnig chunk wise. Otherwise the RStudio gets stuck "Listening on http://127.0.0.1:7302". Other way to escape the same is by hitting the escape key in the console tab
+### Note: Be sure to close the shiny tab WHILE running chunk wise. Otherwise the RStudio gets stuck "Listening on http://127.0.0.1:7302". Other way to escape the same is by hitting the escape key in the console tab
 
 
 
@@ -514,7 +518,7 @@ server = function(input, output, session) {
 Here, we plot the Top 10 Artists for the previous year, and see how many streams they had per month for that year.
 
 Note: This Plot doesn't show the Top 10 Artists in 2021, rather it calculates trends back in the Past Year, starting our count from today or current week itself. Hence, Month 12 denotes the latest 4 weeks (assumed to be Month) and not December, per se.
-```{r echo = FALSE, warning=FALSE}
+```{r Year, echo = FALSE, warning=FALSE}
 #lets make a separate dataframe for yearly scraped data @_@
 
 weeks = getWeeks(date1, n = 48)  #for n = 48 weeks assuming 4 weeks per month
@@ -573,11 +577,11 @@ global_year_artist_plot
 
 
 
-As seen, Olivia Rodrigo had a peak which dates back to last year's May
+As seen, Olivia Rodrigo had a peak which dates back to last year's May.
 
 The investigation of that month looks as follows:
 
-``` {r echo = FALSE, warning= FALSE}
+``` {r Olivia, echo = FALSE, warning= FALSE}
 #investigating the peak
 Scraped%>%
   separate_rows(Artist, sep = ", ", convert = TRUE)%>% 
@@ -595,7 +599,7 @@ Meaning, she had a very successful month!
 
 ### Plotting the same for Genres in the Past Year
 
-```{r echo = FALSE, warning = FALSE}
+```{r Genres, echo = FALSE, warning = FALSE}
 #getting top genre in the past year
 
 #getting rid of one random blank data
