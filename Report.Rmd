@@ -3,7 +3,7 @@ title: "Report"
 output: 
   html_document:
     theme: flatly
-runtime: shiny #makes it a shiny document! 
+runtime: shiny
   
 ---
 
